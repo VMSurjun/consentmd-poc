@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consent MD — Proof of Concept</title>
+<style>
+  :root{
+    --ink:#0B2B30;
+    --teal:#028090;
+    --seafoam:#00A896;
+    --mint:#02C39A;
+    --coral:#F96167;
+    --bg:#F5FAF9;
+    --card:#FFFFFF;
+    --border:#DCEAE7;
+    --muted:#5E736F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:Calibri,Arial,sans-serif; background:var(--bg); color:var(--ink);
+    min-height:100vh;
+  }
+  header{
+    background:var(--ink); color:#fff; padding:1.5rem 2rem;
+  }
+  header h1{ margin:0; font-size:1.4rem; letter-spacing:1px; }
+  header p{ margin:.35rem 0 0; color:#A9CFC9; font-size:.9rem; }
+  main{ max-width:1000px; margin:0 auto; padding:2rem; }
+  .panel{
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:1.5rem 1.75rem; margin-bottom:1.5rem;
+  }
+  .panel h2{ margin-top:0; font-size:1.1rem; }
+  label{ font-size:.85rem; color:var(--muted); display:block; margin-bottom:.3rem; }
+  select{
+    width:100%; padding:.6rem .7rem; border-radius:8px; border:1px solid var(--border);
+    font-size:1rem; background:#fff; color:var(--ink);
+  }
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+  .modifiers{ display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:.5rem; }
+  .modifiers label{ display:flex; align-items:center; gap:.4rem; font-size:.9rem; color:var(--ink); }
+  button{
+    background:var(--teal); color:#fff; border:none; padding:.75rem 1.4rem;
+    border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold;
+  }
+  button:hover{ background:var(--seafoam); }
+  .layer{
+    display:flex; align-items:center; gap:1rem; padding:.9rem 1rem; border-radius:8px;
+    margin-bottom:.6rem; color:#fff; opacity:0; transform:translateY(8px);
+    transition:opacity .4s ease, transform .4s ease;
+  }
+  .layer.show{ opacity:1; transform:translateY(0); }
+  .layer .tag{ font-weight:bold; font-size:.8rem; letter-spacing:.5px; min-width:120px; }
+  .layer .count{ margin-left:auto; font-size:.85rem; opacity:.85; }
+  .l-specialty{ background:var(--teal); }
+  .l-subspecialty{ background:var(--seafoam); }
+  .l-procedure{ background:var(--mint); }
+  #doc{ display:none; }
+  #doc.show{ display:block; }
+  .doc-header{ border-bottom:2px solid var(--ink); padding-bottom:1rem; margin-bottom:1.5rem; }
+  .doc-header h3{ margin:0 0 .3rem; }
+  .doc-header .meta{ font-size:.85rem; color:var(--muted); }
+  .risk-section{ margin-bottom:1.5rem; }
+  .risk-section h4{
+    font-size:.8rem; letter-spacing:1px; color:var(--muted); text-transform:uppercase;
+    border-bottom:1px solid var(--border); padding-bottom:.4rem; margin-bottom:.6rem;
+  }
+  .risk-item{
+    display:flex; gap:.7rem; padding:.45rem 0; font-size:.95rem; align-items:flex-start;
+  }
+  .risk-item .dot{
+    width:8px; height:8px; border-radius:50%; margin-top:.45rem; flex-shrink:0;
+  }
+  .dot.specialty{ background:var(--teal); }
+  .dot.subspecialty{ background:var(--seafoam); }
+  .dot.procedure{ background:var(--mint); }
+  .note{
+    background:#FBEAF0; border-left:3px solid var(--coral); border-radius:0 8px 8px 0;
+    padding:.8rem 1rem; font-size:.85rem; color:#72243E; margin-top:1rem;
+  }
+  .demo-flag{
+    display:inline-block; background:#F5F0DA; color:#633806; font-size:.7rem;
+    padding:.15rem .5rem; border-radius:4px; margin-left:.5rem; font-weight:bold;
+  }
+  .proc-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:1rem;
+    margin:1rem 0 1.5rem;
+  }
+  .proc-card{
+    border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center;
+    background:var(--bg); transition:box-shadow .2s ease, transform .2s ease;
+  }
+  .proc-card.active{ box-shadow:0 0 0 2px var(--teal); transform:translateY(-2px); }
+  .proc-name{ font-weight:bold; font-size:.85rem; margin-top:.5rem; }
+  .proc-sub{ font-size:.75rem; color:var(--muted); margin-top:.15rem; }
+  .stack-diagram{ max-width:520px; margin:1.5rem auto 0; }
+  .stack-row{
+    color:#fff; font-weight:bold; font-size:.8rem; letter-spacing:.5px;
+    padding:.7rem 1rem; border-radius:8px; margin-bottom:.5rem;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .stack-row span{ font-weight:normal; font-size:.75rem; opacity:.9; letter-spacing:normal; }
+  .stack-arrow{ text-align:center; font-size:1.3rem; color:var(--muted); margin:.2rem 0; }
+  .stack-output{
+    background:var(--ink); color:#fff; text-align:center; font-weight:bold;
+    font-size:.85rem; letter-spacing:.5px; padding:.8rem; border-radius:8px;
+  }
+  .output-actions{ display:flex; gap:1rem; margin-top:1.25rem; flex-wrap:wrap; }
+  button.secondary{ background:#fff; color:var(--teal); border:2px solid var(--teal); }
+  button.secondary:hover{ background:var(--bg); }
+  .output-status{ font-size:.85rem; color:var(--muted); margin-top:.6rem; }
+  #qr-wrap{ margin-top:1rem; text-align:center; }
+  #qr-canvas{ display:inline-block; padding:.75rem; background:#fff; border:1px solid var(--border); border-radius:8px; }
+  .lab-high{ color:var(--coral); font-weight:bold; }
+  input[type="password"]{
+    width:100%; padding:.6rem .7rem; border-radius:8px; border:1px solid var(--border); font-size:.9rem;
+  }
+  .agent-actions{ display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .agent-out{
+    background:var(--bg); border:1px solid var(--border); border-radius:8px;
+    padding:1rem 1.2rem; margin-top:.75rem; font-size:.9rem; line-height:1.5; white-space:pre-wrap;
+  }
+  .agent-out .agent-label{
+    display:block; font-size:.75rem; font-weight:bold; letter-spacing:.5px; color:var(--teal);
+    margin-bottom:.4rem;
+  }
+  .agent-out.loading{ color:var(--muted); font-style:italic; }
+  .agent-divider{ border:none; border-top:1px solid var(--border); margin:1.25rem 0; }
+  .activity-log{
+    background:#0B2B30; border-radius:8px; padding:1rem 1.1rem; margin-top:.75rem;
+    font-family:Consolas,Menlo,monospace; font-size:.82rem; line-height:1.6;
+    max-height:320px; overflow-y:auto; display:none;
+  }
+  .activity-log.show{ display:block; }
+  .log-entry{ display:flex; gap:.6rem; padding:.15rem 0; color:#CFEAE6; animation:logIn .3s ease; }
+  @keyframes logIn{ from{ opacity:0; transform:translateY(4px);} to{ opacity:1; transform:translateY(0);} }
+  .log-entry .log-tag{ flex-shrink:0; font-weight:bold; font-size:.7rem; letter-spacing:.5px; min-width:64px; }
+  .log-entry.thought .log-tag{ color:#A9CFC9; }
+  .log-entry.lookup .log-tag{ color:var(--mint); }
+  .log-entry.flag .log-tag{ color:var(--coral); }
+  .log-entry.final .log-tag{ color:#FFD166; }
+  .log-entry.info .log-tag{ color:#A9CFC9; }
+  .log-entry.warn .log-tag{ color:var(--coral); }
+  .dot.agent{ background:#8A5FE0; }
+  .agent-flag-badge{ display:inline-block; background:#EFE7FB; color:#4B2E9E; font-size:.7rem; padding:.15rem .5rem; border-radius:4px; margin-left:.5rem; font-weight:bold; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>CONSENT MD</h1>
+  <p>Proof of concept — assembling procedure-specific consent from stacked risk layers</p>
+</header>
+
+<main>
+
+  <div class="panel" id="diagram-panel">
+    <h2>Architecture, at a glance</h2>
+    <p style="color:var(--muted); font-size:.9rem; margin-top:-.5rem;">Each procedure card shows the joint anatomy and implant it maps to. Consent is assembled by stacking the layers beneath.</p>
+
+    <div class="proc-grid">
+
+      <div class="proc-card" data-proc="tha">
+        <svg viewBox="0 0 120 120" width="70" height="70">
+          <circle cx="60" cy="45" r="22" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <rect x="52" y="60" width="16" height="45" rx="6" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <circle cx="60" cy="45" r="10" fill="var(--mint)"/>
+          <rect x="55" y="52" width="10" height="40" rx="4" fill="var(--teal)"/>
+        </svg>
+        <div class="proc-name">Total Hip Arthroplasty</div>
+        <div class="proc-sub">Ball-and-socket replacement</div>
+      </div>
+
+      <div class="proc-card" data-proc="tka">
+        <svg viewBox="0 0 120 120" width="70" height="70">
+          <rect x="45" y="10" width="14" height="42" rx="5" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <rect x="61" y="10" width="14" height="42" rx="5" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <rect x="45" y="68" width="30" height="42" rx="5" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <path d="M45 55 h30 v10 a15 10 0 0 1 -30 0 z" fill="var(--mint)"/>
+          <rect x="47" y="62" width="26" height="10" rx="3" fill="var(--teal)"/>
+        </svg>
+        <div class="proc-name">Total Knee Arthroplasty</div>
+        <div class="proc-sub">Full joint resurfacing</div>
+      </div>
+
+      <div class="proc-card" data-proc="pka">
+        <svg viewBox="0 0 120 120" width="70" height="70">
+          <rect x="45" y="10" width="14" height="42" rx="5" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <rect x="61" y="10" width="14" height="42" rx="5" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <rect x="45" y="68" width="30" height="42" rx="5" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <path d="M45 55 h14 v9 a7 8 0 0 1 -14 0 z" fill="var(--mint)"/>
+          <rect x="47" y="62" width="10" height="9" rx="2" fill="var(--teal)"/>
+        </svg>
+        <div class="proc-name">Partial Knee Arthroplasty</div>
+        <div class="proc-sub">Single-compartment resurfacing</div>
+      </div>
+
+      <div class="proc-card" data-proc="rsa">
+        <svg viewBox="0 0 120 120" width="70" height="70">
+          <path d="M40 40 a20 20 0 0 1 40 0" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <rect x="52" y="55" width="16" height="48" rx="6" fill="none" stroke="var(--muted)" stroke-width="3"/>
+          <circle cx="60" cy="42" r="9" fill="var(--teal)"/>
+          <path d="M50 50 h20 v8 a10 6 0 0 1 -20 0 z" fill="var(--mint)"/>
+        </svg>
+        <div class="proc-name">Total Shoulder Arthroplasty</div>
+        <div class="proc-sub">Ball-and-socket replacement</div>
+      </div>
+
+    </div>
+
+    <div class="stack-diagram">
+      <div class="stack-row" style="background:var(--mint);">PROCEDURE <span>anatomy + implant specific risks</span></div>
+      <div class="stack-row" style="background:var(--seafoam);">SUBSPECIALTY <span>domain risks (e.g. TJR)</span></div>
+      <div class="stack-row" style="background:var(--teal);">SPECIALTY <span>universal surgical risks</span></div>
+      <div class="stack-row" style="background:var(--coral);">PATIENT <span>EMR-derived adjustments</span></div>
+      <div class="stack-arrow">&#8595;</div>
+      <div class="stack-output">ASSEMBLED, PATIENT-SPECIFIC CONSENT DOCUMENT</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>1. Import patient from EMR <span class="demo-flag">MOCK FHIR DATA</span></h2>
+    <label for="patient">Patient record</label>
+    <select id="patient">
+      <option value="">— select a patient —</option>
+      <option value="p1">Margaret Chen, 68F</option>
+      <option value="p2">Robert Alvarez, 54M</option>
+      <option value="p3">Linda Osei, 71F</option>
+    </select>
+    <div id="patient-card" style="display:none; margin-top:1rem; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; font-size:.9rem;">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:.5rem;">
+        <div><strong id="p-name"></strong> — <span id="p-demo"></span></div>
+        <span class="demo-flag" id="p-source">FHIR Patient resource</span>
+      </div>
+      <div style="margin-top:.6rem; color:var(--muted);">
+        <div><strong>Allergies:</strong> <span id="p-allergies"></span></div>
+        <div><strong>Active conditions:</strong> <span id="p-conditions"></span></div>
+        <div><strong>Current medications:</strong> <span id="p-meds"></span></div>
+        <div id="p-labs-row" style="margin-top:.4rem; display:none;"><strong>Recent labs:</strong> <span id="p-labs"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>2. Select a procedure</h2>
+    <div class="row">
+      <div>
+        <label for="specialty">Specialty</label>
+        <select id="specialty" disabled>
+          <option>Orthopedic Surgery</option>
+        </select>
+      </div>
+      <div>
+        <label for="subspecialty">Subspecialty</label>
+        <select id="subspecialty" disabled>
+          <option>Total Joint Replacement (TJR)</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label for="procedure">Procedure</label>
+      <select id="procedure">
+        <option value="">— choose a procedure —</option>
+        <option value="tha">Total Hip Arthroplasty (THA)</option>
+        <option value="tka">Total Knee Arthroplasty (TKA)</option>
+        <option value="pka">Partial (Unicompartmental) Knee Arthroplasty</option>
+        <option value="rsa">Total Shoulder Arthroplasty</option>
+      </select>
+    </div>
+    <div class="modifiers" id="modifiers" style="display:none;">
+      <label><input type="checkbox" id="mod-robotic"> Robotic-assisted</label>
+      <label><input type="checkbox" id="mod-bilateral"> Bilateral</label>
+      <label id="mod-reverse-wrap" style="display:none;"><input type="checkbox" id="mod-reverse"> Reverse construct</label>
+    </div>
+    <div style="margin-top:1.25rem;">
+      <button id="generate">Assemble consent document</button>
+    </div>
+  </div>
+  <!-- panel numbering: patient=1, procedure=2, assembly=3, doc=4 -->
+
+  <div class="panel" id="assembly" style="display:none;">
+    <h2>3. Assembling risk layers</h2>
+    <div class="layer l-specialty" id="layer-specialty">
+      <span class="tag">SPECIALTY</span><span id="specialty-label">Orthopedic Surgery — universal risks</span>
+      <span class="count" id="specialty-count"></span>
+    </div>
+    <div class="layer l-subspecialty" id="layer-subspecialty">
+      <span class="tag">SUBSPECIALTY</span><span id="subspecialty-label">TJR — domain-specific risks</span>
+      <span class="count" id="subspecialty-count"></span>
+    </div>
+    <div class="layer l-procedure" id="layer-procedure">
+      <span class="tag">PROCEDURE</span><span id="procedure-label"></span>
+      <span class="count" id="procedure-count"></span>
+    </div>
+    <div class="layer" id="layer-patient" style="background:var(--coral);">
+      <span class="tag">PATIENT</span><span id="patient-label">Patient-specific risk adjustments</span>
+      <span class="count" id="patient-count"></span>
+    </div>
+  </div>
+
+  <div class="panel" id="doc">
+    <div class="doc-header">
+      <h3 id="doc-title">Informed Consent for Surgery</h3>
+      <div class="meta" id="doc-meta"></div>
+    </div>
+
+    <div class="risk-section">
+      <h4>Universal surgical risks (specialty layer)</h4>
+      <div id="specialty-risks"></div>
+    </div>
+
+    <div class="risk-section">
+      <h4>Total joint replacement risks (subspecialty layer)</h4>
+      <div id="subspecialty-risks"></div>
+    </div>
+
+    <div class="risk-section">
+      <h4>Procedure-specific risks <span id="procedure-name"></span></h4>
+      <div id="procedure-risks"></div>
+    </div>
+
+    <div class="risk-section" id="patient-section" style="display:none;">
+      <h4>Patient-specific considerations <span class="demo-flag">from EMR</span></h4>
+      <div id="patient-risks"></div>
+      <div id="patient-labs-doc" style="margin-top:.5rem;"></div>
+    </div>
+
+    <div class="note">
+      <strong>Demo data note</strong> — risk items shown here are illustrative examples used to prove the assembly mechanism, not the validated risk dataset. Production Consent MD content is sourced and cited per procedure (e.g. PIAA, J Arthroplasty, PMC) and version-controlled.
+    </div>
+
+    <div class="output-actions">
+      <button id="make-pdf">Generate signable PDF</button>
+      <button id="make-qr" class="secondary">Generate portability QR code</button>
+    </div>
+    <div id="pdf-status" class="output-status"></div>
+    <div id="qr-wrap" style="display:none;">
+      <div id="qr-canvas"></div>
+      <p class="output-status">Scan to reopen this exact consent record (patient, procedure, and modifiers) on another device.</p>
+    </div>
+  </div>
+
+  <div class="panel" id="agent-panel" style="display:none;">
+    <h2>Agentic layer <span class="demo-flag">calls Claude live</span></h2>
+    <p style="color:var(--muted); font-size:.9rem; margin-top:-.5rem;">
+      Optional: paste an Anthropic API key to run these live against Claude. Without a key, each step falls back to a pre-scripted example so the demo never breaks on stage.
+    </p>
+    <input type="password" id="api-key" placeholder="sk-ant-... (stays in this browser tab only, never saved)" style="margin-bottom:1rem;">
+
+    <div class="agent-actions">
+      <button id="agent-draft">1. Draft risk language with AI</button>
+      <button id="agent-scan" class="secondary">2. Scan chart for overlooked risks</button>
+      <button id="agent-review" class="secondary">3. Review consent completeness</button>
+    </div>
+
+    <div id="agent-draft-out" class="agent-out" style="display:none;"></div>
+    <div id="agent-scan-out" class="agent-out" style="display:none;"></div>
+    <div id="agent-review-out" class="agent-out" style="display:none;"></div>
+
+    <hr class="agent-divider">
+
+    <h3 style="margin-bottom:.3rem;">Autonomous workflow <span class="demo-flag">Claude uses tools</span></h3>
+    <p style="color:var(--muted); font-size:.85rem; margin-top:0;">
+      Unlike the buttons above, this gives Claude actual tools — <code>lookup_taxonomy_layer</code>, <code>flag_risk</code>, <code>finalize_document</code> — and lets it decide what to look up, what to flag, and when it's done, in a real tool-use loop rather than a single prompt/response. Watch the activity log below.
+    </p>
+    <div class="agent-actions">
+      <button id="agent-auto">Run autonomous review agent</button>
+    </div>
+    <div id="agent-auto-log" class="activity-log"></div>
+    <div id="agent-auto-status" class="output-status"></div>
+  </div>
+
+</main>
+
+<script>
+const SPECIALTY_RISKS = [
+  "Bleeding requiring transfusion",
+  "Infection at the surgical site",
+  "Blood clots (deep vein thrombosis / pulmonary embolism)",
+  "Anesthesia-related complications",
+  "Nerve or blood vessel injury",
+  "Need for further surgery"
+];
+
+const SUBSPECIALTY_RISKS = {
+  tjr: [
+    "Implant loosening or wear over time",
+    "Leg length discrepancy",
+    "Joint stiffness or reduced range of motion",
+    "Dislocation of the prosthetic joint"
+  ]
+};
+
+const PROCEDURES = {
+  tha: {
+    label: "Total Hip Arthroplasty",
+    subspecialty: "tjr",
+    risks: [
+      "Hip dislocation, particularly in the early recovery period",
+      "Difference in leg length after surgery",
+      "Damage to the sciatic or femoral nerve",
+      "Loosening of the hip implant requiring revision"
+    ]
+  },
+  tka: {
+    label: "Total Knee Arthroplasty",
+    subspecialty: "tjr",
+    risks: [
+      "Persistent knee stiffness limiting bending",
+      "Patellar (kneecap) maltracking or instability",
+      "Peroneal nerve injury affecting foot movement",
+      "Need for manipulation under anesthesia if stiffness persists"
+    ]
+  },
+  pka: {
+    label: "Partial (Unicompartmental) Knee Arthroplasty",
+    subspecialty: "tjr",
+    risks: [
+      "Progression of arthritis in the untreated knee compartments",
+      "Higher revision rate compared to total knee replacement",
+      "Undercorrection or overcorrection of joint alignment"
+    ]
+  },
+  rsa: {
+    label: "Total Shoulder Arthroplasty",
+    subspecialty: "tjr",
+    risks: [
+      "Rotator cuff failure",
+      "Shoulder instability or dislocation",
+      "Axillary nerve injury",
+      "Component loosening at the glenoid or humeral side"
+    ]
+  }
+};
+
+const PATIENTS = {
+  p1: {
+    name: "Margaret Chen",
+    demo: "68F",
+    allergies: ["Penicillin"],
+    conditions: ["Type 2 diabetes mellitus", "Osteoporosis"],
+    meds: ["Metformin", "Alendronate"],
+    labs: [
+      { name: "Hemoglobin A1c", value: "8.2%", flag: "high", note: "Goal < 7% for elective surgery" },
+      { name: "Fasting glucose", value: "162 mg/dL", flag: "high", note: "Goal < 130 mg/dL" }
+    ],
+    notes: "Patient reports a fall two months ago with no fracture on imaging at the time. Family history of poor wound healing after her sister's abdominal surgery. Patient mentioned she has been skipping metformin doses some days due to nausea. Lives alone, stairs to enter home.",
+    riskFlags: [
+      { trigger: "diabetes", text: "Elevated infection risk due to type 2 diabetes — recent A1c of 8.2% is above the target range for elective joint surgery and is associated with higher rates of surgical site infection and delayed wound healing." },
+      { trigger: "osteoporosis", text: "Reduced bone density increases risk of intraoperative fracture or implant loosening." }
+    ]
+  },
+  p2: {
+    name: "Robert Alvarez",
+    demo: "54M",
+    allergies: ["None known"],
+    conditions: ["Atrial fibrillation"],
+    meds: ["Apixaban (anticoagulant)"],
+    notes: "Patient works as a long-haul truck driver and is anxious about time off work. Mentioned occasional missed apixaban doses when on the road. No known bleeding events to date.",
+    riskFlags: [
+      { trigger: "anticoagulant", text: "Current anticoagulant use increases bleeding risk — medication timing must be coordinated with your surgical team." },
+      { trigger: "afib", text: "History of atrial fibrillation increases perioperative cardiac monitoring needs." }
+    ]
+  },
+  p3: {
+    name: "Linda Osei",
+    demo: "71F",
+    allergies: ["Sulfa drugs"],
+    conditions: ["Chronic kidney disease (stage 3)", "Hypertension"],
+    meds: ["Lisinopril", "Amlodipine"],
+    notes: "Patient lives with her daughter who will assist with recovery. Reports intermittent dizziness on standing, not yet worked up. Last nephrology follow-up was 14 months ago.",
+    riskFlags: [
+      { trigger: "ckd", text: "Chronic kidney disease increases sensitivity to certain anesthesia and pain medications, and may affect healing time." },
+      { trigger: "hypertension", text: "Blood pressure will be monitored closely intraoperatively given history of hypertension." }
+    ]
+  }
+};
+
+const patientSelect = document.getElementById("patient");
+patientSelect.addEventListener("change", () => {
+  const val = patientSelect.value;
+  const card = document.getElementById("patient-card");
+  if (!val) { card.style.display = "none"; return; }
+  const p = PATIENTS[val];
+  document.getElementById("p-name").textContent = p.name;
+  document.getElementById("p-demo").textContent = p.demo;
+  document.getElementById("p-allergies").textContent = p.allergies.join(", ");
+  document.getElementById("p-conditions").textContent = p.conditions.join(", ");
+  document.getElementById("p-meds").textContent = p.meds.join(", ");
+  const labsRow = document.getElementById("p-labs-row");
+  if (p.labs && p.labs.length) {
+    document.getElementById("p-labs").innerHTML = p.labs
+      .map(l => `${l.name}: <span class="${l.flag === 'high' ? 'lab-high' : ''}">${l.value}${l.flag==='high' ? ' (high)' : ''}</span> <span style="font-size:.75rem;">(${l.note})</span>`)
+      .join(" &nbsp;|&nbsp; ");
+    labsRow.style.display = "block";
+  } else {
+    labsRow.style.display = "none";
+  }
+  card.style.display = "block";
+  document.getElementById("assembly").style.display = "none";
+  document.getElementById("doc").classList.remove("show");
+});
+
+const procSelect = document.getElementById("procedure");
+
+document.querySelectorAll(".proc-card").forEach(card => {
+  card.addEventListener("click", () => {
+    procSelect.value = card.dataset.proc;
+    procSelect.dispatchEvent(new Event("change"));
+    document.querySelectorAll(".proc-card").forEach(c => c.classList.remove("active"));
+    card.classList.add("active");
+    card.scrollIntoView({behavior:"smooth", block:"nearest"});
+  });
+});
+procSelect.addEventListener("change", () => {
+  document.querySelectorAll(".proc-card").forEach(c => c.classList.toggle("active", c.dataset.proc === procSelect.value));
+});
+const modWrap = document.getElementById("modifiers");
+const reverseWrap = document.getElementById("mod-reverse-wrap");
+const genBtn = document.getElementById("generate");
+
+procSelect.addEventListener("change", () => {
+  const val = procSelect.value;
+  modWrap.style.display = val ? "flex" : "none";
+  reverseWrap.style.display = val === "rsa" ? "flex" : "none";
+  document.getElementById("assembly").style.display = "none";
+  document.getElementById("doc").classList.remove("show");
+});
+
+genBtn.addEventListener("click", () => {
+  const val = procSelect.value;
+  if (!val) { procSelect.style.borderColor = "#F96167"; return; }
+  const proc = PROCEDURES[val];
+  const subRisks = SUBSPECIALTY_RISKS[proc.subspecialty];
+
+  let modLabel = "";
+  if (val === "rsa" && document.getElementById("mod-reverse").checked) modLabel += " (reverse construct)";
+  if (document.getElementById("mod-robotic").checked) modLabel += " · robotic-assisted";
+  if (document.getElementById("mod-bilateral").checked) modLabel += " · bilateral";
+
+  const patientVal = patientSelect.value;
+  const patient = patientVal ? PATIENTS[patientVal] : null;
+  const patientRisks = patient ? patient.riskFlags.map(f => f.text) : [];
+
+  document.getElementById("assembly").style.display = "block";
+  ["layer-specialty","layer-subspecialty","layer-procedure","layer-patient"].forEach(id => document.getElementById(id).classList.remove("show"));
+  document.getElementById("specialty-count").textContent = SPECIALTY_RISKS.length + " items";
+  document.getElementById("subspecialty-count").textContent = subRisks.length + " items";
+  document.getElementById("procedure-count").textContent = proc.risks.length + " items";
+  document.getElementById("procedure-label").textContent = proc.label + " — procedure-specific risks";
+  document.getElementById("patient-count").textContent = patient ? (patientRisks.length + " items") : "no patient selected";
+  document.getElementById("patient-label").textContent = patient ? ("Patient-specific adjustments for " + patient.name) : "Patient-specific risk adjustments";
+
+  setTimeout(() => document.getElementById("layer-specialty").classList.add("show"), 100);
+  setTimeout(() => document.getElementById("layer-subspecialty").classList.add("show"), 500);
+  setTimeout(() => document.getElementById("layer-procedure").classList.add("show"), 900);
+  setTimeout(() => document.getElementById("layer-patient").classList.add("show"), 1300);
+
+  setTimeout(() => {
+    document.getElementById("doc-title").textContent = "Informed Consent for Surgery: " + proc.label + modLabel;
+    document.getElementById("doc-meta").textContent =
+      "Orthopedic Surgery → Total Joint Replacement → " + proc.label + modLabel +
+      (patient ? ("  |  Patient: " + patient.name + " (" + patient.demo + ")") : "") +
+      "  |  Assembled from " + (patient ? "4" : "3") + " versioned risk layers";
+    document.getElementById("procedure-name").textContent = "(" + proc.label + ")";
+
+    document.getElementById("specialty-risks").innerHTML = SPECIALTY_RISKS
+      .map(r => `<div class="risk-item"><span class="dot specialty"></span>${r}</div>`).join("");
+    document.getElementById("subspecialty-risks").innerHTML = subRisks
+      .map(r => `<div class="risk-item"><span class="dot subspecialty"></span>${r}</div>`).join("");
+    document.getElementById("procedure-risks").innerHTML = proc.risks
+      .map(r => `<div class="risk-item"><span class="dot procedure"></span>${r}</div>`).join("");
+
+    const patientSection = document.getElementById("patient-section");
+    if (patient) {
+      document.getElementById("patient-risks").innerHTML = patientRisks
+        .map(r => `<div class="risk-item"><span class="dot" style="background:var(--coral);"></span>${r}</div>`).join("");
+      const labsDoc = document.getElementById("patient-labs-doc");
+      if (patient.labs && patient.labs.length) {
+        labsDoc.innerHTML = "<div style='font-size:.8rem; color:var(--muted); font-weight:bold; margin-bottom:.3rem;'>RECENT LABS</div>" +
+          patient.labs.map(l => `<div class="risk-item"><span class="dot" style="background:${l.flag==='high' ? 'var(--coral)' : 'var(--muted)'};"></span>${l.name}: <strong class="${l.flag==='high' ? 'lab-high' : ''}">${l.value}</strong>${l.flag==='high' ? ' — above target (' + l.note + ')' : ''}</div>`).join("");
+      } else {
+        labsDoc.innerHTML = "";
+      }
+      patientSection.style.display = "block";
+    } else {
+      patientSection.style.display = "none";
+    }
+
+    document.getElementById("doc").classList.add("show");
+    document.getElementById("agent-panel").style.display = "block";
+    document.getElementById("doc").scrollIntoView({behavior:"smooth", block:"start"});
+
+    window.lastAssembled = {
+      title: proc.label + modLabel,
+      metaLine: document.getElementById("doc-meta").textContent,
+      specialtyRisks: SPECIALTY_RISKS,
+      subspecialtyRisks: subRisks,
+      procedureRisks: proc.risks,
+      patientRisks: patientRisks,
+      patientName: patient ? patient.name : null,
+      patientLabs: patient && patient.labs ? patient.labs : [],
+      procVal: val,
+      patientVal: patientVal,
+      mods: {
+        robotic: document.getElementById("mod-robotic").checked,
+        bilateral: document.getElementById("mod-bilateral").checked,
+        reverse: val === "rsa" && document.getElementById("mod-reverse").checked
+      }
+    };
+    document.getElementById("pdf-status").textContent = "";
+    document.getElementById("qr-wrap").style.display = "none";
+  }, 1800);
+});
+
+document.getElementById("make-pdf").addEventListener("click", async () => {
+  const data = window.lastAssembled;
+  if (!data) return;
+  const statusEl = document.getElementById("pdf-status");
+  statusEl.textContent = "Building PDF...";
+
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  let page = pdfDoc.addPage([612, 792]);
+  const margin = 54;
+  let y = 792 - margin;
+  const lineGap = 14;
+
+  function ensureRoom(next){
+    if (y - next < margin + 60) {
+      page = pdfDoc.addPage([612, 792]);
+      y = 792 - margin;
+    }
+  }
+  function drawText(text, opts){
+    const size = (opts && opts.size) || 10;
+    const f = (opts && opts.bold) ? bold : font;
+    const maxWidth = 612 - margin * 2;
+    const words = text.split(" ");
+    let line = "";
+    for (const w of words) {
+      const test = line ? line + " " + w : w;
+      if (f.widthOfTextAtSize(test, size) > maxWidth) {
+        ensureRoom(lineGap);
+        page.drawText(line, { x: margin, y, size, font: f, color: rgb(0.05,0.17,0.19) });
+        y -= lineGap;
+        line = w;
+      } else {
+        line = test;
+      }
+    }
+    if (line) {
+      ensureRoom(lineGap);
+      page.drawText(line, { x: margin, y, size, font: f, color: rgb(0.05,0.17,0.19) });
+      y -= lineGap;
+    }
+  }
+
+  drawText("Informed Consent for Surgery: " + data.title, { size: 15, bold: true });
+  y -= 4;
+  drawText(data.metaLine, { size: 9 });
+  y -= 10;
+
+  function section(heading, items){
+    ensureRoom(lineGap * 2);
+    drawText(heading, { size: 11, bold: true });
+    y -= 2;
+    items.forEach(it => drawText("-  " + it, { size: 10 }));
+    y -= 8;
+  }
+
+  section("Universal surgical risks (specialty layer)", data.specialtyRisks);
+  section("Total joint replacement risks (subspecialty layer)", data.subspecialtyRisks);
+  section("Procedure-specific risks", data.procedureRisks);
+  if (data.patientRisks.length) section("Patient-specific considerations (from EMR)", data.patientRisks);
+  if (data.patientLabs.length) section("Relevant lab values (from EMR)", data.patientLabs.map(l => l.name + ": " + l.value + (l.flag === "high" ? " (above target — " + l.note + ")" : "")));
+
+  ensureRoom(30);
+  drawText("Demo data note: risk content above is illustrative for proof-of-concept purposes, not the validated Consent MD dataset.", { size: 8 });
+  y -= 20;
+
+  const form = pdfDoc.getForm();
+
+  ensureRoom(120);
+  drawText("Patient acknowledgment", { size: 11, bold: true });
+  y -= 6;
+
+  const ackBox = form.createCheckBox("ack_understood");
+  ackBox.addToPage(page, { x: margin, y: y - 12, width: 12, height: 12 });
+  page.drawText("I have reviewed and understand the risks described in this document.", { x: margin + 20, y: y - 10, size: 10, font, color: rgb(0.05,0.17,0.19) });
+  y -= 34;
+
+  page.drawText("Patient printed name:", { x: margin, y, size: 10, font });
+  const nameField = form.createTextField("patient_name");
+  nameField.setText(data.patientName || "");
+  nameField.addToPage(page, { x: margin + 150, y: y - 4, width: 250, height: 16 });
+  y -= 30;
+
+  page.drawText("Patient signature:", { x: margin, y, size: 10, font });
+  const sigField = form.createTextField("patient_signature");
+  sigField.addToPage(page, { x: margin + 150, y: y - 4, width: 250, height: 16 });
+  y -= 30;
+
+  page.drawText("Date:", { x: margin, y, size: 10, font });
+  const dateField = form.createTextField("signature_date");
+  dateField.addToPage(page, { x: margin + 60, y: y - 4, width: 140, height: 16 });
+  y -= 40;
+
+  page.drawText("Surgeon signature:", { x: margin, y, size: 10, font });
+  const surgeonField = form.createTextField("surgeon_signature");
+  surgeonField.addToPage(page, { x: margin + 150, y: y - 4, width: 250, height: 16 });
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "consentmd_" + data.procVal + "_consent.pdf";
+  a.click();
+  URL.revokeObjectURL(url);
+  statusEl.textContent = "PDF downloaded — open it in Acrobat or Preview to fill and sign the form fields.";
+});
+
+document.getElementById("make-qr").addEventListener("click", () => {
+  const data = window.lastAssembled;
+  if (!data) return;
+  const params = new URLSearchParams();
+  params.set("proc", data.procVal);
+  if (data.patientVal) params.set("patient", data.patientVal);
+  if (data.mods.robotic) params.set("robotic", "1");
+  if (data.mods.bilateral) params.set("bilateral", "1");
+  if (data.mods.reverse) params.set("reverse", "1");
+  const url = window.location.origin + window.location.pathname + "?" + params.toString();
+
+  const wrap = document.getElementById("qr-wrap");
+  const canvasEl = document.getElementById("qr-canvas");
+  canvasEl.innerHTML = "";
+  new QRCode(canvasEl, { text: url, width: 160, height: 160, colorDark: "#0B2B30", colorLight: "#ffffff" });
+  wrap.style.display = "block";
+});
+
+(function autoLoadFromQuery(){
+  const params = new URLSearchParams(window.location.search);
+  const proc = params.get("proc");
+  if (!proc) return;
+  document.getElementById("procedure").value = proc;
+  document.getElementById("procedure").dispatchEvent(new Event("change"));
+  if (params.get("patient")) {
+    document.getElementById("patient").value = params.get("patient");
+    document.getElementById("patient").dispatchEvent(new Event("change"));
+  }
+  if (params.get("robotic")) document.getElementById("mod-robotic").checked = true;
+  if (params.get("bilateral")) document.getElementById("mod-bilateral").checked = true;
+  if (params.get("reverse")) document.getElementById("mod-reverse").checked = true;
+  setTimeout(() => document.getElementById("generate").click(), 300);
+})();
+
+async function callClaude(prompt){
+  const key = document.getElementById("api-key").value.trim();
+  if (!key) return null;
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 700,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!resp.ok) throw new Error("API error " + resp.status);
+  const data = await resp.json();
+  return data.content.map(b => b.text || "").join("\n");
+}
+
+function showAgentOut(id, label, text, isLive){
+  const el = document.getElementById(id);
+  el.style.display = "block";
+  el.classList.remove("loading");
+  el.innerHTML = `<span class="agent-label">${label}${isLive ? " · live Claude response" : " · scripted example (no API key entered)"}</span>` +
+    text.replace(/</g, "&lt;");
+}
+
+document.getElementById("agent-draft").addEventListener("click", async () => {
+  const data = window.lastAssembled;
+  if (!data || !data.patientName) { alert("Select a patient and procedure first."); return; }
+  const p = PATIENTS[data.patientVal];
+  const el = document.getElementById("agent-draft-out");
+  el.style.display = "block"; el.classList.add("loading"); el.textContent = "Reasoning over chart...";
+
+  const prompt = `You are drafting one paragraph of a surgical informed consent document. Patient conditions: ${p.conditions.join(", ")}. Medications: ${p.meds.join(", ")}. Labs: ${(p.labs||[]).map(l=>l.name+" "+l.value).join(", ")}. Procedure: ${data.title}. Write 2-3 sentences of patient-facing consent language describing the risk this specific patient profile adds to this procedure, in plain language. Do not restate generic surgical risks, only what this patient's specific profile adds.`;
+
+  try {
+    const live = await callClaude(prompt);
+    if (live) { showAgentOut("agent-draft-out", "Drafted risk language", live.trim(), true); return; }
+  } catch (e) { }
+  showAgentOut("agent-draft-out", "Drafted risk language",
+    `Given ${p.name.split(" ")[0]}'s A1c of 8.2% and history of osteoporosis, this procedure carries a higher-than-typical risk of surgical site infection and delayed wound healing, along with an elevated risk of implant loosening due to reduced bone density. Tight glucose control in the weeks before surgery may reduce these risks.`,
+    false);
+});
+
+document.getElementById("agent-scan").addEventListener("click", async () => {
+  const data = window.lastAssembled;
+  if (!data || !data.patientName) { alert("Select a patient and procedure first."); return; }
+  const p = PATIENTS[data.patientVal];
+  const el = document.getElementById("agent-scan-out");
+  el.style.display = "block"; el.classList.add("loading"); el.textContent = "Scanning chart notes...";
+
+  const prompt = `Clinical notes for a surgical patient: "${p.notes}". Known conditions: ${p.conditions.join(", ")}. Medications: ${p.meds.join(", ")}. Procedure planned: ${data.title}. Identify 1-3 things in these notes that a standard risk checklist based only on diagnosis codes might miss but that are relevant to surgical consent or perioperative planning. Be concise, bullet points, one line each.`;
+
+  try {
+    const live = await callClaude(prompt);
+    if (live) { showAgentOut("agent-scan-out", "Flagged for surgeon review", live.trim(), true); return; }
+  } catch (e) { }
+  showAgentOut("agent-scan-out", "Flagged for surgeon review",
+    `- Recent unexplained fall (2 months ago) not reflected in coded conditions — consider fall-risk workup before surgery.\n- Reports skipping metformin some days — glucose control may be less stable than last A1c suggests.\n- Lives alone with stairs at home entrance — discharge planning may need home health or a temporary stair-free arrangement.`,
+    false);
+});
+
+document.getElementById("agent-review").addEventListener("click", async () => {
+  const data = window.lastAssembled;
+  if (!data) { alert("Generate a consent document first."); return; }
+  const el = document.getElementById("agent-review-out");
+  el.style.display = "block"; el.classList.add("loading"); el.textContent = "Reviewing document completeness...";
+
+  const allRisks = data.specialtyRisks.concat(data.subspecialtyRisks, data.procedureRisks, data.patientRisks);
+  const prompt = `Here is a list of risk disclosures in a surgical consent document for ${data.title}: ${allRisks.join("; ")}. Patient conditions: ${data.patientName ? PATIENTS[data.patientVal].conditions.join(", ") : "none on file"}. As a second reviewer, state in 2-3 sentences whether this document's risk disclosures appear consistent and complete relative to the patient's profile, or name one specific gap if you see one.`;
+
+  try {
+    const live = await callClaude(prompt);
+    if (live) { showAgentOut("agent-review-out", "Completeness review", live.trim(), true); return; }
+  } catch (e) { }
+  showAgentOut("agent-review-out", "Completeness review",
+    `This document's disclosures are consistent with the patient's documented profile — diabetes, osteoporosis, and their associated risks are all represented. One gap: the chart notes a recent unexplained fall that isn't reflected anywhere in the consent language or risk flags; consider whether that warrants its own disclosure line before this is finalized.`,
+    false);
+});
+
+// ---- Autonomous agentic workflow: real tool use, not a single prompt/response ----
+
+const AGENT_TOOLS = [
+  {
+    name: "lookup_taxonomy_layer",
+    description: "Look up the risk items already covered in a layer of the consent document (specialty, subspecialty, or procedure), so you don't duplicate them.",
+    input_schema: {
+      type: "object",
+      properties: {
+        layer: { type: "string", enum: ["specialty", "subspecialty", "procedure"], description: "Which layer to inspect." }
+      },
+      required: ["layer"]
+    }
+  },
+  {
+    name: "flag_risk",
+    description: "Flag a patient-specific risk to add to the consent document, based on something in the chart that the standard layers don't already cover.",
+    input_schema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Patient-facing risk disclosure sentence, plain language." },
+        rationale: { type: "string", description: "What in the chart triggered this flag." }
+      },
+      required: ["text", "rationale"]
+    }
+  },
+  {
+    name: "finalize_document",
+    description: "Call once review is complete, to finalize the consent document.",
+    input_schema: {
+      type: "object",
+      properties: {
+        summary: { type: "string", description: "One or two sentence summary of the review and what, if anything, was flagged." }
+      },
+      required: ["summary"]
+    }
+  }
+];
+
+// Hand-authored fallback insight per patient, drawn from the same free-text chart notes
+// used by the scripted "scan chart" example — kept separate so the two demos don't collide.
+const AGENT_FALLBACK_INSIGHTS = {
+  p1: {
+    text: "A recent unexplained fall two months ago is not reflected in coded conditions — recommend a fall-risk assessment before surgery.",
+    rationale: "Chart note describes a fall not present in the conditions list or diagnosis codes."
+  },
+  p2: {
+    text: "Occasional missed anticoagulant doses while on long-haul routes may make bleeding risk less predictable than the medication list alone suggests.",
+    rationale: "Chart note mentions inconsistent apixaban adherence while traveling for work."
+  },
+  p3: {
+    text: "Intermittent dizziness on standing, not yet worked up, could indicate orthostatic hypotension relevant to anesthesia planning and post-op mobility.",
+    rationale: "Chart note reports an unworked-up dizziness symptom absent from the coded problem list."
+  }
+};
+
+function logEvent(text, type, tag){
+  const log = document.getElementById("agent-auto-log");
+  log.classList.add("show");
+  const entry = document.createElement("div");
+  entry.className = "log-entry " + type;
+  entry.innerHTML = `<span class="log-tag">${tag || type.toUpperCase()}</span><span>${String(text).replace(/</g,"&lt;")}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog(){
+  const log = document.getElementById("agent-auto-log");
+  log.innerHTML = "";
+  log.classList.remove("show");
+}
+
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+function addAgentFlagToDocument(flag){
+  const data = window.lastAssembled;
+  if (!data) return;
+  data.patientRisks.push(flag.text);
+  document.getElementById("patient-section").style.display = "block";
+  const item = document.createElement("div");
+  item.className = "risk-item";
+  item.innerHTML = `<span class="dot agent"></span>${flag.text.replace(/</g,"&lt;")}<span class="agent-flag-badge">FLAGGED BY AGENT</span>`;
+  document.getElementById("patient-risks").appendChild(item);
+  document.getElementById("patient-count").textContent = data.patientRisks.length + " items";
+}
+
+function executeAgentTool(name, input, ctx){
+  if (name === "lookup_taxonomy_layer") {
+    const map = { specialty: ctx.data.specialtyRisks, subspecialty: ctx.data.subspecialtyRisks, procedure: ctx.data.procedureRisks };
+    const items = map[input.layer] || [];
+    logEvent(`${items.length} existing item(s) in the ${input.layer} layer.`, "lookup", "LOOKUP");
+    return { layer: input.layer, items };
+  }
+  if (name === "flag_risk") {
+    logEvent(input.text, "flag", "FLAG");
+    ctx.flags.push({ text: input.text, rationale: input.rationale });
+    return { status: "flagged", total_flags: ctx.flags.length };
+  }
+  if (name === "finalize_document") {
+    logEvent(input.summary, "final", "DONE");
+    return { status: "finalized" };
+  }
+  return { error: "unknown tool: " + name };
+}
+
+async function callClaudeWithTools(system, messages, key){
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 800,
+      system,
+      tools: AGENT_TOOLS,
+      messages
+    })
+  });
+  if (!resp.ok) throw new Error("API error " + resp.status);
+  return resp.json();
+}
+
+async function runLiveAgentLoop(data, p, key){
+  const ctx = { data, flags: [] };
+  const system = "You are an autonomous assistant helping assemble a surgical informed consent document. You have tools to look up what's already covered in each risk layer and to flag patient-specific risks that aren't. Review the chart, flag anything the standard layers miss (or nothing, if there's nothing to add), then call finalize_document. Use as few tool calls as the task actually needs.";
+  const chartSummary = `Patient: ${p.name} (${p.demo}). Conditions: ${p.conditions.join(", ") || "none on file"}. Medications: ${p.meds.join(", ") || "none on file"}. Labs: ${(p.labs||[]).map(l=>l.name+" "+l.value).join(", ") || "none on file"}. Notes: ${p.notes}. Procedure: ${data.title}.`;
+  let messages = [{ role: "user", content: chartSummary + "\n\nReview this chart against the existing consent layers, flag anything the standard layers miss, then finalize." }];
+
+  const MAX_TURNS = 6;
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const resp = await callClaudeWithTools(system, messages, key);
+    messages.push({ role: "assistant", content: resp.content });
+
+    resp.content.filter(b => b.type === "text" && b.text.trim()).forEach(b => logEvent(b.text.trim(), "thought", "THINK"));
+
+    const toolUses = resp.content.filter(b => b.type === "tool_use");
+    if (!toolUses.length) break;
+
+    let finalized = false;
+    const toolResults = toolUses.map(tu => {
+      const result = executeAgentTool(tu.name, tu.input, ctx);
+      if (tu.name === "finalize_document") finalized = true;
+      return { type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(result) };
+    });
+    messages.push({ role: "user", content: toolResults });
+    if (finalized) break;
+  }
+
+  ctx.flags.forEach(addAgentFlagToDocument);
+  document.getElementById("agent-auto-status").textContent = ctx.flags.length
+    ? `Agent flagged ${ctx.flags.length} patient-specific risk(s) and added them to the document above.`
+    : "Agent reviewed the chart and found nothing beyond the standard layers to flag.";
+}
+
+async function runScriptedFallback(data, p){
+  logEvent("No API key entered — running scripted example so the demo doesn't break.", "info", "INFO");
+  await wait(500);
+  logEvent("Reviewing chart for " + p.name + "...", "thought", "THINK");
+  await wait(700);
+  executeAgentTool("lookup_taxonomy_layer", { layer: "specialty" }, { data });
+  await wait(450);
+  executeAgentTool("lookup_taxonomy_layer", { layer: "subspecialty" }, { data });
+  await wait(450);
+  executeAgentTool("lookup_taxonomy_layer", { layer: "procedure" }, { data });
+  await wait(700);
+
+  const insight = AGENT_FALLBACK_INSIGHTS[data.patientVal];
+  const flags = [];
+  if (insight) {
+    logEvent("Chart notes mention something the coded layers don't cover.", "thought", "THINK");
+    await wait(600);
+    executeAgentTool("flag_risk", insight, { data, flags });
+    await wait(500);
+  } else {
+    logEvent("Nothing in the notes beyond what the standard layers already cover.", "thought", "THINK");
+    await wait(500);
+  }
+  executeAgentTool("finalize_document", {
+    summary: insight
+      ? "Flagged one chart-derived risk beyond the standard layers; all other disclosures are already covered."
+      : "Reviewed chart; standard layers already cover everything relevant."
+  }, { data });
+
+  flags.forEach(addAgentFlagToDocument);
+  document.getElementById("agent-auto-status").textContent = flags.length
+    ? `Agent flagged ${flags.length} patient-specific risk(s) and added them to the document above.`
+    : "Agent reviewed the chart and found nothing beyond the standard layers to flag.";
+}
+
+document.getElementById("agent-auto").addEventListener("click", async () => {
+  const data = window.lastAssembled;
+  if (!data || !data.patientName) { alert("Select a patient and procedure first."); return; }
+  const p = PATIENTS[data.patientVal];
+  const key = document.getElementById("api-key").value.trim();
+
+  clearLog();
+  document.getElementById("agent-auto-status").textContent = "";
+  logEvent("Starting autonomous review for " + p.name + "...", "info", "INFO");
+
+  if (!key) {
+    await runScriptedFallback(data, p);
+    return;
+  }
+  try {
+    await runLiveAgentLoop(data, p, key);
+  } catch (e) {
+    logEvent("Live call failed (" + e.message + ") — falling back to scripted example.", "warn", "WARN");
+    await runScriptedFallback(data, p);
+  }
+});
+</script>
+
+</body>
+</html>
